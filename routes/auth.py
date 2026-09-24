@@ -57,8 +57,6 @@ def login():
         db.select(User).filter_by(username=username)
     ).scalar_one_or_none()
 
-    bcrypt.checkpw(password.encode("utf-8"), user.password_hash.encode("utf-8"))
-
     if user is None or not bcrypt.checkpw(password.encode("utf-8"), user.password_hash.encode("utf-8")):
         return jsonify({"error": "Invalid credentials"}), 401
 
