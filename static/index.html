@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>littleNotes</title>
+<style>
+  :root {
+    --bg: #f6f5f2;
+    --card: #ffffff;
+    --text: #1f1f1f;
+    --muted: #6b6b6b;
+    --border: #e2e0da;
+    --accent: #3b6df0;
+    --accent-hover: #2f5bd0;
+    --danger: #c9372c;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  .hidden { display: none !important; }
+
+  button {
+    font: inherit;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 16px;
+    cursor: pointer;
+    background: var(--accent);
+    color: #fff;
+  }
+  button:hover { background: var(--accent-hover); }
+  button.ghost {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  button.ghost:hover { background: #eeece7; }
+
+  input, textarea {
+    font: inherit;
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+  }
+  input:focus, textarea:focus { outline: 2px solid var(--accent); border-color: transparent; }
+  label { display: block; font-size: 14px; color: var(--muted); margin: 14px 0 6px; }
+
+  .error { color: var(--danger); font-size: 14px; min-height: 20px; margin-top: 10px; }
+  .success { color: #1f8a4c; }
+
+  #auth-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .auth-card {
+    width: 100%;
+    max-width: 380px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+  }
+  .auth-card h1 { margin: 0 0 20px; font-size: 24px; }
+  .tabs { display: flex; gap: 4px; background: #eeece7; padding: 4px; border-radius: 8px; }
+  .tabs button {
+    flex: 1;
+    background: transparent;
+    color: var(--muted);
+    padding: 8px;
+  }
+  .tabs button.active { background: #fff; color: var(--text); }
+  .auth-card form button[type=submit] { width: 100%; margin-top: 20px; }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 24px;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+  }
+  header h1 { margin: 0; font-size: 20px; }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  #current-user { color: var(--muted); font-size: 14px; }
+
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
+  .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+  .toolbar h2 { margin: 0; font-size: 18px; }
+
+  #notes-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 14px;
+  }
+  .note-file {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    cursor: pointer;
+    text-align: left;
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 130px;
+  }
+  .note-file:hover { background: var(--card); border-color: var(--accent); }
+  .note-file .icon { font-size: 28px; line-height: 1; }
+  .note-file .title { font-weight: 600; word-break: break-word; }
+  .note-file .preview { color: var(--muted); font-size: 13px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .empty { color: var(--muted); text-align: center; padding: 48px 0; grid-column: 1 / -1; }
+
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .modal {
+    width: 100%;
+    max-width: 560px;
+    max-height: 90vh;
+    overflow: auto;
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 24px;
+  }
+  .modal h3 { margin: 0 0 4px; font-size: 20px; word-break: break-word; }
+  .modal .meta { color: var(--muted); font-size: 13px; margin-bottom: 16px; }
+  .modal .body { white-space: pre-wrap; word-break: break-word; line-height: 1.5; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+  textarea { min-height: 180px; resize: vertical; }
+
+  @media (max-width: 520px) {
+    header { padding: 12px 16px; }
+    #current-user { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<section id="auth-screen">
+  <div class="auth-card">
+    <h1>littleNotes</h1>
+    <div class="tabs">
+      <button type="button" id="tab-login" class="active">Вход</button>
+      <button type="button" id="tab-register">Регистрация</button>
+    </div>
+
+    <form id="auth-form" autocomplete="on">
+      <label for="username">Логин</label>
+      <input id="username" name="username" required autocomplete="username">
+
+      <label for="password">Пароль</label>
+      <input id="password" name="password" type="password" required autocomplete="current-password">
+
+      <button type="submit" id="auth-submit">Войти</button>
+      <div id="auth-message" class="error"></div>
+    </form>
+  </div>
+</section>
+
+<section id="notes-screen" class="hidden">
+  <header>
+    <h1>littleNotes</h1>
+    <div class="header-right">
+      <span id="current-user"></span>
+      <button type="button" class="ghost" id="logout-btn">Выйти</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="toolbar">
+      <h2>Мои заметки</h2>
+      <button type="button" id="new-note-btn">+ Создать заметку</button>
+    </div>
+    <div id="notes-list"></div>
+    <div id="notes-error" class="error"></div>
+  </main>
+</section>
+
+<div id="view-modal" class="overlay hidden">
+  <div class="modal">
+    <h3 id="view-title"></h3>
+    <div class="meta" id="view-meta"></div>
+    <div class="body" id="view-body"></div>
+    <div class="modal-actions">
+      <button type="button" class="ghost" data-close>Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<div id="create-modal" class="overlay hidden">
+  <form class="modal" id="create-form">
+    <h3>Новая заметка</h3>
+    <label for="note-title">Заголовок</label>
+    <input id="note-title" required maxlength="200">
+    <label for="note-text">Текст</label>
+    <textarea id="note-text" required></textarea>
+    <div id="create-error" class="error"></div>
+    <div class="modal-actions">
+      <button type="button" class="ghost" data-close>Отмена</button>
+      <button type="submit">Сохранить</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  const API = {
+    register: "/auth/register",
+    login:    "/auth/login",
+    notes:    "/api/data",
+    create:   "/api/notes",
+  };
+
+  const $ = (id) => document.getElementById(id);
+  let mode = "login";
+  let notes = [];
+
+  const auth = {
+    get token() { return sessionStorage.getItem("token"); },
+    get user()  { return sessionStorage.getItem("user"); },
+    save(token, user) {
+      sessionStorage.setItem("token", token);
+      sessionStorage.setItem("user", user);
+    },
+    clear() { sessionStorage.clear(); },
+  };
+
+  async function request(url, { method = "GET", body } = {}) {
+    const headers = { "Content-Type": "application/json" };
+    if (auth.token) headers["Authorization"] = "Bearer " + auth.token;
+
+    const res = await fetch(url, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    let data = null;
+    try { data = await res.json(); } catch {}
+
+    if (!res.ok) {
+      const err = new Error((data && (data.error || data.message)) || `Ошибка ${res.status}`);
+      err.status = res.status;
+      throw err;
+    }
+    return data;
+  }
+
+  function setMode(newMode) {
+    mode = newMode;
+    $("tab-login").classList.toggle("active", mode === "login");
+    $("tab-register").classList.toggle("active", mode === "register");
+    $("auth-submit").textContent = mode === "login" ? "Войти" : "Зарегистрироваться";
+    $("password").autocomplete = mode === "login" ? "current-password" : "new-password";
+    showAuthMessage("");
+  }
+
+  function showAuthMessage(text, ok = false) {
+    const el = $("auth-message");
+    el.textContent = text;
+    el.classList.toggle("success", ok);
+  }
+
+  $("tab-login").onclick = () => setMode("login");
+  $("tab-register").onclick = () => setMode("register");
+
+  $("auth-form").onsubmit = async (e) => {
+    e.preventDefault();
+    const username = $("username").value.trim();
+    const password = $("password").value;
+
+    try {
+      if (mode === "register") {
+        await request(API.register, { method: "POST", body: { username, password } });
+        setMode("login");
+        showAuthMessage("Аккаунт создан, теперь войди", true);
+        return;
+      }
+      const data = await request(API.login, { method: "POST", body: { username, password } });
+      if (!data || !data.token) throw new Error("Сервер не вернул token");
+      auth.save(data.token, username);
+      $("password").value = "";
+      showNotesScreen();
+    } catch (err) {
+      showAuthMessage(err.message);
+    }
+  };
+
+  function showAuthScreen() {
+    $("notes-screen").classList.add("hidden");
+    $("auth-screen").classList.remove("hidden");
+  }
+
+  function showNotesScreen() {
+    $("auth-screen").classList.add("hidden");
+    $("notes-screen").classList.remove("hidden");
+    $("current-user").textContent = auth.user || "";
+    loadNotes();
+  }
+
+  function logout(message = "") {
+    auth.clear();
+    showAuthScreen();
+    setMode("login");
+    if (message) showAuthMessage(message);
+  }
+
+  $("logout-btn").onclick = () => logout();
+
+  async function loadNotes() {
+    $("notes-error").textContent = "";
+    try {
+      const data = await request(API.notes);
+      notes = Array.isArray(data) ? data : (data && (data.notes || data.data)) || [];
+      renderNotes();
+    } catch (err) {
+      if (err.status === 401) return logout("Сессия истекла, войди снова");
+      $("notes-error").textContent = err.message;
+    }
+  }
+
+  function renderNotes() {
+    const list = $("notes-list");
+    list.replaceChildren();
+
+    if (notes.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "empty";
+      empty.textContent = "Заметок пока нет — создай первую";
+      list.append(empty);
+      return;
+    }
+
+    notes.forEach((note, index) => {
+      const card = document.createElement("button");
+      card.type = "button";
+      card.className = "note-file";
+
+      const icon = document.createElement("div");
+      icon.className = "icon";
+      icon.textContent = "📄";
+
+      const title = document.createElement("div");
+      title.className = "title";
+      title.textContent = note.title || "Без названия";
+
+      const preview = document.createElement("div");
+      preview.className = "preview";
+      preview.textContent = note.text || "";
+
+      card.append(icon, title, preview);
+      card.onclick = () => openNote(index);
+      list.append(card);
+    });
+  }
+
+  function openNote(index) {
+    const note = notes[index];
+    $("view-title").textContent = note.title || "Без названия";
+    $("view-meta").textContent = note.created_at ? "Создана: " + note.created_at : "";
+    $("view-body").textContent = note.text || "";
+    $("view-modal").classList.remove("hidden");
+  }
+
+  $("new-note-btn").onclick = () => {
+    $("create-form").reset();
+    $("create-error").textContent = "";
+    $("create-modal").classList.remove("hidden");
+    $("note-title").focus();
+  };
+
+  $("create-form").onsubmit = async (e) => {
+    e.preventDefault();
+    const title = $("note-title").value.trim();
+    const text = $("note-text").value;
+    try {
+      await request(API.create, { method: "POST", body: { title, text } });
+      $("create-modal").classList.add("hidden");
+      loadNotes();
+    } catch (err) {
+      if (err.status === 401) return logout("Сессия истекла, войди снова");
+      $("create-error").textContent = err.message;
+    }
+  };
+
+  document.querySelectorAll(".overlay").forEach((overlay) => {
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay || e.target.hasAttribute("data-close")) {
+        overlay.classList.add("hidden");
+      }
+    });
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") document.querySelectorAll(".overlay").forEach((o) => o.classList.add("hidden"));
+  });
+
+  if (auth.token) showNotesScreen(); else showAuthScreen();
+</script>
+</body>
+</html>
