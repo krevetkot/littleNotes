@@ -56,6 +56,11 @@
   .error { color: var(--danger); font-size: 14px; min-height: 20px; margin-top: 10px; }
   .success { color: #1f8a4c; }
 
+  .password-rules { list-style: none; margin: 8px 0 0; padding: 0; font-size: 13px; color: var(--muted); }
+  .password-rules li::before { content: "✗ "; color: var(--danger); }
+  .password-rules li.ok { color: #1f8a4c; }
+  .password-rules li.ok::before { content: "✓ "; color: #1f8a4c; }
+
   #auth-screen {
     min-height: 100vh;
     display: flex;
@@ -169,6 +174,13 @@
 
       <label for="password">Пароль</label>
       <input id="password" name="password" type="password" required autocomplete="current-password">
+      <ul id="password-rules" class="password-rules hidden">
+        <li data-rule="length">Не меньше 8 символов</li>
+        <li data-rule="lower">Строчная латинская буква</li>
+        <li data-rule="upper">Заглавная латинская буква</li>
+        <li data-rule="digit">Цифра</li>
+        <li data-rule="special">Спецсимвол (!@#$% и т.п.)</li>
+      </ul>
 
       <button type="submit" id="auth-submit">Войти</button>
       <div id="auth-message" class="error"></div>
@@ -270,8 +282,31 @@
     $("tab-register").classList.toggle("active", mode === "register");
     $("auth-submit").textContent = mode === "login" ? "Войти" : "Зарегистрироваться";
     $("password").autocomplete = mode === "login" ? "current-password" : "new-password";
+    $("password-rules").classList.toggle("hidden", mode === "login");
+    updatePasswordRules();
     showAuthMessage("");
   }
+
+  const PASSWORD_RULES = {
+    length:  (p) => p.length >= 8,
+    lower:   (p) => /[a-z]/.test(p),
+    upper:   (p) => /[A-Z]/.test(p),
+    digit:   (p) => /\d/.test(p),
+    special: (p) => /[^A-Za-z0-9]/.test(p),
+  };
+
+  function updatePasswordRules() {
+    const password = $("password").value;
+    let allOk = true;
+    document.querySelectorAll("#password-rules li").forEach((li) => {
+      const ok = PASSWORD_RULES[li.dataset.rule](password);
+      li.classList.toggle("ok", ok);
+      if (!ok) allOk = false;
+    });
+    return allOk;
+  }
+
+  $("password").addEventListener("input", updatePasswordRules);
 
   function showAuthMessage(text, ok = false) {
     const el = $("auth-message");
@@ -289,6 +324,10 @@
 
     try {
       if (mode === "register") {
+        if (!updatePasswordRules()) {
+          showAuthMessage("Пароль не соответствует требованиям");
+          return;
+        }
         await request(API.register, { method: "POST", body: { username, password } });
         setMode("login");
         showAuthMessage("Аккаунт создан, теперь войди", true);
