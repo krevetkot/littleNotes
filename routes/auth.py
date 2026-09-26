@@ -1,10 +1,12 @@
 import re
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, current_app
 
 from extensions import db
 from models import User
 import bcrypt
+import jwt
+from datetime import datetime, timedelta, timezone
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
@@ -60,4 +62,13 @@ def login():
     if user is None or not bcrypt.checkpw(password.encode("utf-8"), user.password_hash.encode("utf-8")):
         return jsonify({"error": "Invalid credentials"}), 401
 
-    return jsonify({"token": "not-a-real-token"})
+    key = current_app.config["SECRET_KEY"]
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": str(user.id),
+        "iat": now,
+        "exp": now + timedelta(hours=12),
+    }
+    token = jwt.encode(payload, key, algorithm="HS256")
+
+    return jsonify({"token": token})
