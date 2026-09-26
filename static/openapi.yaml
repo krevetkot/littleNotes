@@ -1,0 +1,222 @@
+openapi: 3.0.3
+info:
+  title: littleNotes API
+  version: 1.0.0
+  description: |
+    Защищённое REST API для личных заметок.
+
+    1. `POST /auth/register` — создать пользователя.
+    2. `POST /auth/login` — получить JWT.
+    3. Нажать **Authorize** вверху, вставить токен (без `Bearer`).
+    4. Вызывать `/api/*` — без токена они возвращают 401.
+
+servers:
+  - url: /
+
+tags:
+  - name: auth
+    description: Регистрация и вход
+  - name: notes
+    description: Заметки текущего пользователя (нужен JWT)
+
+paths:
+  /auth/register:
+    post:
+      tags: [auth]
+      summary: Регистрация пользователя
+      description: |
+        Пароль хэшируется bcrypt и должен содержать минимум 8 символов,
+        строчную и заглавную латинскую букву, цифру и спецсимвол.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Credentials"
+            example:
+              username: alice
+              password: Str0ng#Pass
+      responses:
+        "201":
+          description: Пользователь создан
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Нет логина/пароля или пароль слишком слабый
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Логин уже занят
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /auth/login:
+    post:
+      tags: [auth]
+      summary: Вход, выдача JWT
+      description: Возвращает JWT (HS256), действительный 12 часов.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Credentials"
+            example:
+              username: alice
+              password: Str0ng#Pass
+      responses:
+        "200":
+          description: Успешный вход
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Token"
+        "400":
+          description: Нет логина или пароля
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Неверный логин или пароль
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/data:
+    get:
+      tags: [notes]
+      summary: Список заметок текущего пользователя
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Заметки, новые первыми. Пользовательские поля HTML-экранированы.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Note"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/notes:
+    post:
+      tags: [notes]
+      summary: Создать заметку
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewNote"
+            example:
+              title: "<script>alert(1)</script>"
+              text: Проверка экранирования
+      responses:
+        "201":
+          description: Заметка создана
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Note"
+        "400":
+          description: Нет JSON, заголовка или текста
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    Unauthorized:
+      description: Нет токена, токен невалиден или истёк
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            missing:
+              value: { error: Unauthorized }
+            invalid:
+              value: { error: Invalid token }
+            expired:
+              value: { error: Token expired }
+
+  schemas:
+    Credentials:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          format: password
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        username:
+          type: string
+          example: alice
+
+    Token:
+      type: object
+      properties:
+        token:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+    NewNote:
+      type: object
+      required: [title, text]
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        text:
+          type: string
+
+    Note:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        title:
+          type: string
+          example: "&lt;script&gt;alert(1)&lt;/script&gt;"
+        text:
+          type: string
+          example: Проверка экранирования
+        created_at:
+          type: string
+          example: "26.09.2026 11:50"
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
