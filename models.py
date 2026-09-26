@@ -22,7 +22,7 @@ class Note(db.Model):
         nullable=False,
         default=lambda: datetime.now(timezone.utc),
     )
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
 
     def to_dict(self):
         return {
