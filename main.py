@@ -1,3 +1,5 @@
+import os
+
 from flask import Flask
 
 from config import Config
@@ -26,4 +28,4 @@ def create_app():
 
 
 if __name__ == "__main__":
-    create_app().run(debug=True)
+    create_app().run(debug=os.environ.get("FLASK_DEBUG") == "1")

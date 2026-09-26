@@ -12,7 +12,7 @@ import bcrypt
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
 PASSWORD_RE = re.compile(r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$")
-PASSWORD_RULES = (
+STRENGTH_RULES_MSG = (
     "Password must be at least 8 characters long and contain a lowercase letter, "
     "an uppercase letter, a digit and a special character"
 )
@@ -34,7 +34,7 @@ def register():
         return jsonify({"error": "Username and password required"}), 400
 
     if not PASSWORD_RE.fullmatch(password):
-        return jsonify({"error": PASSWORD_RULES}), 400
+        return jsonify({"error": STRENGTH_RULES_MSG}), 400
 
     hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
     existing = db.session.execute(

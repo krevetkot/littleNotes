@@ -287,7 +287,7 @@
     showAuthMessage("");
   }
 
-  const PASSWORD_RULES = {
+  const STRENGTH_RULES_MSG = {
     length:  (p) => p.length >= 8,
     lower:   (p) => /[a-z]/.test(p),
     upper:   (p) => /[A-Z]/.test(p),
@@ -299,7 +299,7 @@
     const password = $("password").value;
     let allOk = true;
     document.querySelectorAll("#password-rules li").forEach((li) => {
-      const ok = PASSWORD_RULES[li.dataset.rule](password);
+      const ok = STRENGTH_RULES_MSG[li.dataset.rule](password);
       li.classList.toggle("ok", ok);
       if (!ok) allOk = false;
     });
