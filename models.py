@@ -1,3 +1,4 @@
+import html
 from datetime import datetime, timezone
 
 from extensions import db
@@ -27,7 +28,7 @@ class Note(db.Model):
     def to_dict(self):
         return {
             "id": self.id,
-            "title": self.title,
-            "text": self.text,
+            "title": html.escape(self.title),
+            "text": html.escape(self.text),
             "created_at": self.created_at.strftime("%d.%m.%Y %H:%M"),
         }

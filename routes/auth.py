@@ -1,3 +1,4 @@
+import html
 import re
 
 from flask import Blueprint, jsonify, request
@@ -46,7 +47,7 @@ def register():
     db.session.add(user)
     db.session.commit()
 
-    return jsonify({"id": user.id, "username": user.username}), 201
+    return jsonify({"id": user.id, "username": html.escape(user.username)}), 201
 
 
 @auth_bp.post("/login")
